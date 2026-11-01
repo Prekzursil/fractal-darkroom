@@ -1,4 +1,4 @@
-numpy>=1.24
+numpy>=2.5.4
 pillow>=13.0.0
 # runtime dep of scripts/verify_site.py (site verification lane): the quality
 # gate installs this file before basedpyright, so without playwright listed
