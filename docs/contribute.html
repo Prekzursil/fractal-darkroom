@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html data-build="e5ddea6e" lang="en">
+<html data-build="cb8c2659" lang="en">
 <head>
 <script>
 /* error banner: works even if every other asset fails; shown only on error */
@@ -51,8 +51,9 @@ that is all we need. Everything below is also written down in
     a human curates. <em>Minutes.</em></p></div>
   <div class="card"><h3>2 · Add a fractal map</h3>
     <p>The build suite scaffolds, scouts, previews and checks a new map against
-    the full quality bar: 100&nbsp;% line+branch tests, docs card, catalogue
-    parity. <em>A focused evening.</em></p></div>
+    the full quality bar: <code>check</code>, docs card, catalogue parity, and
+    CI's 100&nbsp;% coverage gate on the measured Python modules.
+    <em>A focused evening.</em></p></div>
   <div class="card"><h3>3 · Platform changes</h3>
     <p>CI lanes and tool pins live in the
     <a href="https://github.com/Prekzursil/quality-zero-platform">quality-zero-platform</a>
@@ -135,7 +136,9 @@ Every screenshot below is a real capture of the exact step.</p>
 <h2 class="reveal" id="map">Path 2 — add a new fractal map</h2>
 <p class="reveal">New maps enter through the build suite and must clear the
 full quality bar — <code>check</code> (below), CI's 100&nbsp;% line<b>+</b>branch
-coverage, the docs card, and the Python↔JavaScript catalogue parity gate. The
+coverage gate (it measures the Python modules listed in <code>.coveragerc</code>;
+<code>usermaps/</code>, where new maps land, is not in that set), the docs card, and the
+Python↔JavaScript catalogue parity gate. The
 <code>demo_*</code> maps in <a href="https://github.com/Prekzursil/fractal-darkroom/tree/main/usermaps">usermaps/</a>
 are the reference examples.</p>
 <pre class="reveal"><code># 1. scaffold a map from the operator grammar
@@ -153,16 +156,18 @@ python brot_build.py preview my_map
 # 4. the full quality bar — must print: check: OK
 python brot_build.py check my_map
 
-# 5. full-quality render (user maps join the farm list automatically)
-python brot_farm.py render my_map</code></pre>
+# 5. full-quality render: user maps join the farm list automatically;
+#    `render` takes no map name and renders every map without a PNG in out/
+python brot_farm.py render</code></pre>
 <ul class="reveal">
   <li><b>Parity gate:</b> every <code>usermaps/*.py</code> entry must appear in
   <code>docs/assets/catalogue.js</code>; regenerate it with
   <code>python brot_build.py catalogue</code> — never hand-edit it.</li>
-  <li><b>Tests:</b> every new Python line is covered at 100&nbsp;% line <em>and</em>
-  branch by tests added in the same change
-  (<code>python -m pytest --cov</code>; <code># pragma: no cover</code> only on
-  <code>__main__</code> guards).</li>
+  <li><b>Tests:</b> new Python code ships with tests in the same change. CI
+  enforces 100&nbsp;% line <em>and</em> branch coverage on the modules listed in
+  <code>.coveragerc</code> (<code>python -m pytest --cov</code>;
+  <code># pragma: no cover</code> only on <code>__main__</code> guards);
+  <code>usermaps/</code> and the browser JavaScript are not measured.</li>
   <li><b>Before pushing:</b> <code>bash scripts/preflight.sh</code> — all lanes,
   locally, before CI sees them.</li>
 </ul>
@@ -182,8 +187,9 @@ fix belongs in QZP — <b>never weaken a gate locally to go green</b>.</p>
 <h2 class="reveal">One rule above all</h2>
 <p class="reveal">Every gate must pass for the right reason. The
 <a href="https://github.com/Prekzursil/fractal-darkroom/blob/main/.github/PULL_REQUEST_TEMPLATE.md">pull-request template</a>
-is a 1:1 map of the CI gates — preflight lanes, 100&nbsp;% line+branch coverage,
-the site suite, asset versioning, and the parity test — and reviewers re-run
+is a 1:1 map of the CI gates — preflight lanes, 100&nbsp;% line+branch coverage of
+the measured Python modules, the site suite, asset versioning, and the parity test — and
+reviewers re-run
 everything. Conduct: the
 <a href="https://github.com/Prekzursil/fractal-darkroom/blob/main/CODE_OF_CONDUCT.md">Contributor Covenant 2.1</a>
 applies; security findings go to

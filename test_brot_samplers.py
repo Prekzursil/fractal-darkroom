@@ -171,7 +171,10 @@ def test_s1_explicit_pre_cap_branch():
 
 
 def test_s1_agrees_with_s0():
-    """Same estimand: total mass close, coarse-blocked shape TV-small."""
+    """Coarse agreement only: total mass close, coarse-blocked shape TV-small.
+
+    These loose bounds are a smoke test, not a check of unbiasedness.
+    """
     size, cap, budget = 64, 60, 20_000
     s0 = bs.sample_uniform(size, cap, budget, seed=20261021)
     s1 = bs.sample_boundary_importance(size, cap, budget, seed=20261022, grid=32)
@@ -187,7 +190,7 @@ def test_s2_diagnostics_determinism_budget():
     r = bs.sample_mh_mutation(48, 40, 3000, seed=5, chains=6, step=0.05)
     assert r["evals"] <= 3000
     assert r["chains"] == 6 and r["steps"] > 0 and 0 <= r["burn"] < r["steps"]
-    assert 0.0 < r["acceptance"] < 1.0  # recorded, and in a healthy band
+    assert 0.0 < r["acceptance"] < 1.0  # recorded, strictly between 0 and 1
     assert r["n_states"] == 6 * (r["steps"] - r["burn"])
     assert 0.0 < r["ess"] <= r["n_states"]
     assert r["total_mass"] is None  # SNIS sees the shape only

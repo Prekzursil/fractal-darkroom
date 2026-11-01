@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html data-build="e5ddea6e" lang="en">
+<html data-build="cb8c2659" lang="en">
 <head>
 <script>
 /* error banner: works even if every other asset fails; shown only on error */
@@ -34,7 +34,7 @@
     The Buddhabrot asks <em>“where does it travel on the way out?”</em> — and keeps the answer.</p>
     <p>Every image here is a histogram of where millions of escaping orbits actually went.
     No raytracing, no painting: one line of iteration
-    <span class="formula">z ↦ z² + c</span>, a few hundred million samples, and a camera made of counting.</p>
+    <span class="formula">z ↦ z² + c</span>, tens of millions of samples per image, and a camera made of counting.</p>
     <div class="cta-row">
       <a class="cta" href="playground.html">▶ Open the Playground</a>
       <a class="cta ghost" href="math.html">Read the math</a>
@@ -42,7 +42,7 @@
     </div>
     <div class="badges">
       <span class="badge hot">17 maps</span>
-      <span class="badge">74M+ samples per render</span>
+      <span class="badge">11M–74M samples per render</span>
       <span class="badge">pure numpy CPU</span>
       <span class="badge">MIT</span>
     </div>
@@ -55,7 +55,8 @@
 
 <h2 class="reveal">The collection</h2>
 <p class="reveal">Seventeen maps, one renderer. Each keeps the same skeleton — sample, iterate, classify,
-replay, histogram, tone-map — and swaps the beating heart: the update rule.
+replay, histogram, tone-map — and swaps the beating heart: the update rule, the escape test, or
+what gets sampled and plotted.
 Click any card to open it live in the playground.</p>
 
 <div class="gallery" id="gallery">
@@ -92,7 +93,7 @@ Click any card to open it live in the playground.</p>
   <figure class="reveal"><a href="playground.html?map=sinhmut"><img src="assets/t-sinhmut.jpg?v=63acc3af" alt="Sinh mutation" loading="lazy"></a>
     <figcaption><b>Sinh mutation</b><span class="f">x′ = sinh x² − y, y′ = 2xy</span></figcaption></figure>
   <figure class="reveal"><a href="playground.html?map=expmut"><img src="assets/t-expmut.jpg?v=d79ead2a" alt="Exp mutation" loading="lazy"></a>
-    <figcaption><b>Exp mutation</b><span class="f">x′ = exp x² − y — no prisoners at all</span></figcaption></figure>
+    <figcaption><b>Exp mutation</b><span class="f">x′ = exp x² − y — explosive escapes</span></figcaption></figure>
 </div>
 
 <h2 class="reveal">How this project grew</h2>
@@ -102,28 +103,29 @@ as interesting as the pictures.</p>
   <li><span class="t">ACT I — the classic</span><br>
     A two-phase numpy renderer: <b>classify</b> who escapes, then <b>replay</b> only the escapees and
     histogram every point they visit. 74 million samples, three iteration caps (80 / 400 / 1500)
-    for R/G/B. <b>3 min 05 s</b> on a laptop CPU. The tone curve needed a real black-point anchor —
+    for B/G/R. The tone curve needed a real black-point anchor —
     log-compression alone turned the first attempt into fog.</li>
   <li><span class="t">ACT II — the first mutation</span><br>
     <b>x′ = cos(x²) − y, y′ = 2xy.</b> Scouting revealed two laws: large |x| folds back through the
-    cosine within one step (so <b>y is the true exit direction</b> — escape is judged on |y|), and the
-    lone −y term <b>breaks mirror symmetry</b>: a lopsided Buddha (0.74 vs 0.95 correlation).
-    ~17% of starts never escape.</li>
+    cosine within one step (so <b>y is the usual exit direction</b> — escape is judged on |y|), and the
+    lone −y term <b>breaks mirror symmetry</b>: a lopsided Buddha.</li>
   <li><span class="t">ACT III — the farm</span><br>
-    One generalized renderer, seventeen update rules, four parallel shards. Canvases follow the
-    maps: sin/cos brots are <b>banners</b> (prisoners confined to a horizontal band), the cosfull
-    mutation is a <b>1:3 tower</b> (91% of orbit points inside |y|&lt;3, journeys to |y|=100).</li>
+    One generalized renderer, seventeen maps (fifteen distinct update rules), four parallel
+    shards. Canvases follow the maps: sin/cos brots are <b>banners</b> (prisoners confined to a
+    horizontal band), the cosfull mutation is a <b>1:3 tower</b> (journeys out to |y|=100, the
+    escape threshold).</li>
   <li><span class="t">ACT IV — the bug</span><br>
-    Sparse renders triggered an investigation. The test suite caught it: a diverged orbit can
-    <b>overflow to NaN</b> before the chunked escape-check fires, and NaN comparisons are False —
-    so the point masquerades as a prisoner <em>forever</em>. Two-thirds of the escaping orbits in the
-    quadratic family had been silently dropped. One guard
-    (<code>(r &gt; 4) | ~isfinite(r)</code>) and 200M corrective samples later, the family is whole.
+    Sparse renders exposed it: a diverged orbit can <b>overflow to NaN</b> before the chunked
+    escape-check fires, and NaN comparisons are False — so the point masquerades as a prisoner
+    <em>forever</em>. A large share of the escaping orbits in the quadratic family (how large
+    depends on the check interval and the iteration cap) had been silently dropped. One guard
+    (<code>(r &gt; 4) | ~isfinite(r)</code>) fixed the classifier, and a scalar-reference test now
+    guards it.
     <a href="code.html#the-bug">Full story →</a></li>
   <li><span class="t">ACT V — the museum</span><br>
-    Numeric QC (symmetry correlation, center-of-mass, region brightness, coverage), a test suite
-    of 24 assertions, CI on three Python versions, and this site: a playground where the maths
-    runs in your browser.</li>
+    Numeric QC (mean luminance, visible fraction, symmetry correlation, center of mass), a test
+    suite, CI on Python 3.11–3.14, and this site: a playground where the maths runs in your
+    browser.</li>
 </ul>
 
 <h2 class="reveal">The philosophy of the Buddhabrot</h2>
@@ -145,9 +147,10 @@ as interesting as the pictures.</p>
   <div class="card">
     <h3>Symmetry is law</h3>
     <p>Maps with real coefficients obey <b>conjugation equivariance</b>: mirror the input, mirror the
-    output — so the Buddha stands symmetric. Fold an absolute value into the rule (Burning Ship,
-    Buffalo) or a lone −y (our mutations) and the figure <b>tips over</b>, because the law is broken
-    on purpose. Every render is QC-checked against the symmetry its formula predicts.</p>
+    output — so the Buddha stands symmetric. Fold |2xy| into the rule (Burning Ship, Buffalo) or
+    add a lone −y (our mutations) and the figure <b>tips over</b>, because the law is broken on
+    purpose. <code>brot_farm.py qc</code> reports a top/bottom correlation for each render — a
+    mirror test whenever the plot window is centred on the real axis.</p>
   </div>
   <div class="card">
     <h3>Noise is the medium</h3>

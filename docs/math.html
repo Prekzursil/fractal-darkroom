@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html data-build="e5ddea6e" lang="en">
+<html data-build="cb8c2659" lang="en">
 <head>
 <script>
 /* error banner: works even if every other asset fails; shown only on error */
@@ -73,13 +73,16 @@ reason orbits trace filigree instead of blobs.</p>
 <h2 class="reveal">2 · Prisoners and escapees</h2>
 <p class="reveal">Fix a constant <b>c</b> and iterate from <b>z₀ = 0</b>. Two futures exist.
 If the orbit ever crosses <b>|z| &gt; 2</b>, it diverges to infinity, and provably so: past radius 2
-the squaring outruns the additive nudge (for |z| ≥ max(|c|, 2), each step at least squares the
+the squaring outruns the additive nudge (for |z| &gt; max(|c|, 2), each step at least squares the
 excess). Those are the <b>escapees</b> — the raw material of every image here. Points whose orbits
 stay bounded forever are <b>prisoners</b>; the set of all c-values with prisoner orbits <em>is</em>
 the Mandelbrot set. The Antibuddhabrot, perversely, photographs the prisoners instead.</p>
 <p class="reveal"><b>Try it:</b> click anywhere below to choose c and watch its orbit. Land inside
 the cardioid for a locked-in prisoner; graze the boundary for long dramatic escapes; step outside
-for a quick death.</p>
+for a quick death. (Like the renderer, the demo starts each orbit at z = c. For z² + c, z³ + c,
+the Ship and the Tricorn that is the orbit of z₀ = 0 one step in; for the two cosine maps, whose
+first step from 0 is not c, it is a different starting convention, and which c count as
+prisoners depends on it.)</p>
 
 <div class="panel reveal">
   <div class="controls">
@@ -107,11 +110,10 @@ for a quick death.</p>
 each escaping orbit contributes counting measure along its path; the Buddhabrot is the expected
 density of that cloud over uniformly sampled c — estimated by Monte Carlo. The estimator’s
 noise obeys the photography law: per-pixel standard deviation ∝ √visits, so relative grain
-falls as <b>1/√N</b>. The classic 74M-sample render averages ~1000 visits per lit pixel;
-the sparse power brots started near ~20 and were topped up until structure stood out of the grain.</p>
-<p class="reveal">Visits are also brutally heavy-tailed: the bulb’s rim collects millions while
-the far field counts dozens. A linear display would show one white dot. Hence the darkroom work
-in §6.</p>
+falls as <b>1/√N</b>.</p>
+<p class="reveal">Visits are also heavily skewed: the brightest pixels near the set collect far
+more visits than the faint far field, so a linear display would leave most of the figure near
+black. Hence the darkroom work in §6.</p>
 
 <h2 class="reveal">4 · Three channels = three depths of time</h2>
 <p class="reveal">Iteration count is the hidden third dimension. An orbit that escapes in 30 steps
@@ -121,33 +123,38 @@ assigning them to <b>B, G, R</b> turns depth-of-time into color: shallow fast es
 blue-cyan, mid-depth green-gold, and the deep survivors burn orange-red as halos. The
 <b>Nebulabrot</b> pushes the same idea to 50 / 500 / 5000 for a purely gaseous look.</p>
 
-<h2 class="reveal">5 · Escape laws are per-map theorems</h2>
+<h2 class="reveal">5 · Escape tests are per-map choices</h2>
 <p class="reveal">“Past radius 2 you die” is true for quadratics but is <em>not</em> a universal
 law. Each update rule needs its own escape criterion, and getting it wrong quietly poisons the
-classifier (see <a href="code.html#the-bug">the NaN bug</a>). The rules used in this project:</p>
+classifier (see <a href="code.html#the-bug">the NaN bug</a>). The tests used in this project
+are provable bounds for the polynomial and y-cosine maps, and heuristic bailouts for the rest:</p>
 <table class="reveal">
-  <tr><th>Family</th><th>Rule</th><th>Escape test</th><th>Why it’s valid</th></tr>
+  <tr><th>Family</th><th>Rule</th><th>Escape test</th><th>Justification</th></tr>
   <tr><td>z<sup>n</sup> + c</td><td class="mono">x′=Re(zⁿ)+cx</td><td class="mono">|z| &gt; 2</td>
-      <td>polynomial growth dominates the additive c once |z| exceeds max(2, |c|)</td></tr>
+      <td>provable: polynomial growth dominates the additive c once |z| exceeds max(2, |c|)</td></tr>
   <tr><td>sin z + c, cos z + c</td><td class="mono">cosh/sinh split</td><td class="mono">|z| &gt; 10³</td>
-      <td>cosh y ~ e^|y|/2: once |y| ≳ 8 growth is exponential per step</td></tr>
+      <td>heuristic: cosh y ~ e^|y|/2 grows fast once |y| ≳ 8, but a large real part folds back —
+      for sin z + c at c = 0, z = π/2 + 8i maps to ≈ 1490 + 0i, passes the test, then lands in
+      [−1, 1] (for cos z + c, z = 8i does the same)</td></tr>
   <tr><td>cos-mutations</td><td class="mono">x′ = cos(x²) − y + cx</td><td class="mono">|y| &gt; 100</td>
-      <td>cos folds huge |x| back to [−1,1] in ONE step — x is a trapdoor, <b>y is the only exit</b>; once |y| is large, x′ ≈ −y and |y′| = |2xy| compounds</td></tr>
+      <td>heuristic: cos folds huge |x| back to [−1,1] in ONE step, so x is a trapdoor and <b>y is
+      the usual exit</b> — but a large |y| can fall back too: at c = 0, (0, 150) maps to (−149, 0)
+      and then into [−1, 1], and cosfull orbits can cross |y| = 100 and return</td></tr>
   <tr><td>y-cosine mutation</td><td class="mono">y′ = cos 2xy + cy</td><td class="mono">|x| &gt; 100</td>
-      <td>the mirror image: y′ is forever bounded in [−1, 1], so x — whose update still squares — is the only exit</td></tr>
+      <td>provable: the mirror image — cos 2xy stays in [−1, 1], so |y′| ≤ 1 + |cy| ≤ 2 for the sampled c, and x — whose update still squares — is the only exit</td></tr>
 </table>
 
 <h2 class="reveal">6 · The darkroom: log compression between anchors</h2>
-<p class="reveal">Raw counts span five orders of magnitude. The tone pipeline is:</p>
-<pre class="reveal"><code>v   = log(1 + h)                       # compress five decades into ~11 stops
+<p class="reveal">Raw counts cover a wide dynamic range. The tone pipeline is:</p>
+<pre class="reveal"><code>v   = log(1 + h)                       # log-compress the dynamic range
 lo  = percentile(v[lit], 30)          # black anchor: the 30th pct of LIT pixels
 hi  = percentile(v[lit], 99.9)        # white anchor: the hot core
 img = clip((v − lo) / (hi − lo)) ** γ # gamma shapes the midtones</code></pre>
-<p class="reveal">Why percentiles and not min/max? One over-hot pixel (the bulb rim gets
-millions of visits) would pin the white point and starve everything else; anchors taken from
+<p class="reveal">Why percentiles and not min/max? One over-hot pixel would pin the white
+point and starve everything else; anchors taken from
 the distribution of <em>lit</em> pixels self-calibrate to whatever the map produced. A black
 anchor matters just as much: the project’s first attempt normalized only the top and rendered
-fog — 59% mean luminance — until the 30th-percentile floor put the darkness back.</p>
+fog until the 30th-percentile floor put the darkness back.</p>
 <p class="reveal"><b>Tone Lab:</b> the canvas below starts from a real histogram channel
 (the classic render’s blue layer, log-encoded to 8-bit). You are holding the same knobs the
 renderer exposes.</p>
@@ -170,22 +177,23 @@ renderer exposes.</p>
 <p class="reveal">If a map’s coefficients are real, it commutes with conjugation:
 <b>F(z̄; c̄) = conj(F(z; c))</b>. Mirror the start, and every step mirrors — so a uniformly
 sampled symmetric window must produce a mirror-symmetric histogram, up to noise. Break the
-law on purpose — fold |2xy| (Burning Ship, Buffalo), conjugate before squaring (Tricorn —
-which instead gains 3-fold rotation), or add a lone −y (our mutations) — and the figure
-tips over. The renderer’s QC measures exactly this:</p>
+law on purpose — fold |2xy| (Burning Ship, Buffalo) or add a lone −y (our mutations) — and the
+figure tips over. (The Tricorn conjugates before squaring and still keeps the mirror; it also
+gains 3-fold rotation.) The renderer’s QC (<code>python brot_farm.py qc</code>) reports a
+top/bottom correlation for every render, which is a mirror test when the plot window is centred
+on the real axis. What each formula predicts:</p>
 <table class="reveal">
-  <tr><th>Map</th><th>Mirror correlation</th><th>Verdict</th></tr>
-  <tr><td>cosfull — cos(x²−y²)</td><td class="mono">1.00</td><td>perfectly equivariant (±y enter squared)</td></tr>
-  <tr><td>Buddhabrot / Antibuddhabrot</td><td class="mono">0.95</td><td>equivariant ✓</td></tr>
-  <tr><td>Tricorn</td><td class="mono">0.95</td><td>equivariant via double conjugation</td></tr>
-  <tr><td>cos-mutation (−y)</td><td class="mono">0.74</td><td>law broken → lopsided Buddha</td></tr>
-  <tr><td>Burning Ship</td><td class="mono">0.45</td><td>|2xy| fold identifies the two halves</td></tr>
-  <tr><td>Buffalo</td><td class="mono">0.32</td><td>double fold</td></tr>
-  <tr><td>Julia-brot (c not real)</td><td class="mono">0.61</td><td>c breaks equivariance</td></tr>
+  <tr><th>Map</th><th>Prediction</th></tr>
+  <tr><td>cosfull — cos(x²−y²)</td><td>equivariant (±y enter squared)</td></tr>
+  <tr><td>Buddhabrot / Antibuddhabrot</td><td>equivariant ✓</td></tr>
+  <tr><td>Tricorn</td><td>equivariant via double conjugation</td></tr>
+  <tr><td>cos-mutation (−y)</td><td>law broken → lopsided Buddha</td></tr>
+  <tr><td>Burning Ship</td><td>|2xy| fold identifies the two halves</td></tr>
+  <tr><td>Buffalo</td><td>double fold</td></tr>
+  <tr><td>Julia-brot (c not real)</td><td>c breaks equivariance</td></tr>
 </table>
-<p class="reveal">The power maps z³/z⁴/z⁵ are equivariant too — their measured correlations dip
-(0.5–0.76) purely because their histograms are sparse, and shot noise decorrelates faint halves.
-The theorem holds; the film is grainy.</p>
+<p class="reveal">The power maps z³/z⁴/z⁵ are equivariant too; the test suite checks the z³
+histogram’s mirror symmetry directly.</p>
 </main>
 
 <footer>
@@ -196,7 +204,8 @@ The theorem holds; the film is grainy.</p>
 <script src="assets/hist-blue.js?v=623cb657"></script>
 <script>
 "use strict";
-// ---- shared map registry (kept in sync with brot_farm.py) ----
+// ---- demo map registry: step rules and escape tests follow brot_farm.py; the
+// cosfull window is cropped to |y| <= 3 for the demo; orbits start at z = c ----
 const MAPS = {
   mandel:  { win: [-2.25, 1.15, -1.7, 1.7], step: (x,y,cx,cy)=>[x*x-y*y+cx, 2*x*y+cy], gone: (x,y)=>x*x+y*y>4 },
   cubic:   { win: [-1.6, 1.6, -1.6, 1.6], step: (x,y,cx,cy)=>[x**3-3*x*y*y+cx, 3*x*x*y-y**3+cy], gone: (x,y)=>x*x+y*y>4 },

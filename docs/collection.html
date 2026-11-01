@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html data-build="e5ddea6e" lang="en">
+<html data-build="cb8c2659" lang="en">
 <head>
 <script>
 /* error banner: works even if every other asset fails; shown only on error */
@@ -30,8 +30,10 @@
 <h1 class="reveal">The APRS collection</h1>
 <p class="reveal">Every entry is an <b>APRS</b> — an Attractor Parameter Record Set
 (<code>.aprs.json</code>, <a href="https://github.com/Prekzursil/fractal-darkroom/blob/main/docs/adr/0001-aprs.md">ADR 0001</a>):
-a complete, human-readable recipe for one attractor &mdash; operator grammar, window,
-iteration caps, tone gamma, and a preview hash that doubles as its fingerprint.
+a human-readable parameter record for one attractor &mdash; operator grammar, plot window,
+iteration caps, tone gamma, and a preview hash used for de-duplication. A record is not enough
+to reproduce an image exactly: it leaves out the sampling window, sample budgets, seeds, image
+size and the other tone settings.
 Submissions arrive through the <a href="https://github.com/Prekzursil/fractal-darkroom/issues/new?assignees=&amp;labels=aprs&amp;template=aprs.yml">APRS issue form</a>,
 get validated by <code>scripts/validate_aprs.py</code>, deduped by preview hash,
 and are merged only by a human curator. Want in? Author a map in the
@@ -43,12 +45,13 @@ and are merged only by a human curator. Want in? Author a map in the
   <div class="card" style="margin-top:14px">
     <h3 style="margin:0 0 6px">How to read a record</h3>
     <p style="font-size:13.5px;color:var(--muted);margin:0">
-    <span class="mono">grammar</span> picks the iteration rule from the same operator
-    grammar as <span class="mono">brot_build.py</span>; <span class="mono">window</span>
+    <span class="mono">grammar</span> picks the iteration rule by its operator-grammar
+    tokens (the same names as <span class="mono">brot_build.py</span>); <span class="mono">window</span>
     is the plot rectangle; <span class="mono">caps</span> are the three channel
     iteration caps; <span class="mono">gamma</span> is the tone-mapping exponent;
-    <span class="mono">preview</span> is sha1[:8] of the 128&thinsp;px preview PNG &mdash;
-    the record&rsquo;s content fingerprint and file name. Provenance badges:
+    <span class="mono">preview</span> is sha1[:8] of the producer&rsquo;s 128&thinsp;px
+    preview PNG &mdash; the de-duplication key and file name (the playground and the CLI render
+    different previews, so the same parameters can hash differently). Provenance badges:
     <b style="color:#7fd18a">authored-on-site</b> (made in this playground or with the
     build suite CLI) vs <b style="color:#6fc3df">imported-bundle</b> (arrived inside a
     bundle).</p>

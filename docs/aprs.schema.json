@@ -43,7 +43,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["family", "real", "imag", "power"],
-      "description": "Operator grammar, identical semantics to brot_build.py.",
+      "description": "Operator grammar (same token set as brot_build.py).",
       "properties": {
         "family": { "enum": ["mutation", "fold", "power"] },
         "real": { "enum": ["cos", "sin", "tan", "sinh", "exp", "abs"] },
@@ -102,7 +102,7 @@
     "preview": {
       "type": ["string", "null"],
       "pattern": "^[0-9a-f]{8}$",
-      "description": "sha1[:8] of the 128px preview PNG, or null if the producer rendered none. Content-identity key for the collection."
+      "description": "sha1[:8] of the producer's 128px preview PNG, or null if the producer rendered none. Used for de-duplication in the collection."
     }
   }
 }

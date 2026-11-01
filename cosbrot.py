@@ -4,13 +4,14 @@
     x' = cos(x^2) - y + cx      (mutation: cos of the squared real part, minus y)
     y' = 2*x*y     + cy         (unchanged from z^2 + c)
 
-Escape is judged on |y|: large |x| folds back through cos(x^2) within one
-step, while large |y| diverges monotonically, so y is the true exit direction.
+Escape is judged on |y| > 100, a bailout heuristic: large |x| folds back
+through cos(x^2) within one step, so y is the usual exit direction, but not
+a guaranteed one (at c = 0, (0, 150) maps to (-149, 0) and then into [-1, 1]).
 The lone -y term breaks the top/bottom mirror symmetry of the classic
 Buddhabrot, so the density figure comes out lopsided.
 
 Usage:
-    python mutant_brot.py render [--smoke]
+    python cosbrot.py render [--smoke]
 """
 
 from __future__ import annotations

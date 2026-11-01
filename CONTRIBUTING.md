@@ -17,10 +17,10 @@ never a public issue (see [SECURITY.md](SECURITY.md)).
 For all code paths, one rule is absolute: **every gate must pass for the right
 reason.** Never weaken a gate to pass it. Run
 [`bash scripts/preflight.sh`](scripts/preflight.sh) before every push — it
-reproduces the CI lint, type, coverage and research lanes locally (ruff,
-basedpyright, oxlint, biome, pytest at 100 % line **and** branch coverage,
-and the research lab-notebook gate); the Playwright site suite is in the
-pull-request checklist below.
+reproduces the CI lint, type and coverage lanes locally (ruff, basedpyright,
+oxlint, biome, and pytest at 100 % line **and** branch coverage of the Python
+modules listed in [`.coveragerc`](.coveragerc)); the Playwright site suite is
+in the pull-request checklist below.
 
 ---
 
@@ -94,8 +94,10 @@ python brot_build.py preview my_map
 #    scalar smoke test, docs card present, playground catalogue parity
 python brot_build.py check my_map      # must print: check: OK
 
-# 5. Full-quality render (user maps join the farm list automatically)
-python brot_farm.py render my_map
+# 5. Full-quality render. User maps join the farm list automatically;
+#    `render` takes no map name: it renders every map (stock and user)
+#    that has no PNG in out/ yet
+python brot_farm.py render
 ```
 
 What `check` (and CI) enforce — all of it mandatory:
@@ -109,7 +111,10 @@ What `check` (and CI) enforce — all of it mandatory:
 - **Tests at 100 % line *and* branch.** Any new Python line must be exercised
   by tests added in the same change; `# pragma: no cover` is only allowed on
   `__main__` guards. CI runs `python -m pytest --cov` with
-  `fail_under = 100` (line and branch) on every supported Python.
+  `fail_under = 100` (line and branch) on every supported Python. That gate
+  measures only the modules listed under `source` in `.coveragerc`:
+  `usermaps/` (where new maps land), `scripts/verify_site.py` and the browser
+  JavaScript are not measured.
 
 Before pushing: `bash scripts/preflight.sh` (all lanes), and if you touched
 anything under `docs/`, `python scripts/verify_site.py --browsers chromium --origin http`
@@ -143,7 +148,7 @@ local checks can never drift from CI.
 
 See [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md) —
 it is the same list CI enforces: preflight lanes green, 100 % line+branch
-coverage, the Playwright site suite, the research lab-notebook gate, asset
+coverage of the measured Python modules, the Playwright site suite, asset
 versioning stamps, and the map-parity tests.
 
 ## Conduct

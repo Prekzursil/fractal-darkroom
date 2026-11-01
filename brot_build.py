@@ -16,10 +16,12 @@ Subcommands:
                        and re-importable in the playground ("load APRS")
     catalogue          regenerate out/catalogue.json + docs/assets/catalogue.js
 
-Mutation grammar (identical semantics in Python and the browser playground):
+Mutation grammar (the same operator names as the browser playground; one
+known difference: for the fold family's abs this module computes
+|Re z^n + cx|, while the playground computes |Re z^n| + cx):
     real ops f: cos sin tan sinh exp abs      -> x' = f(x*x) - y + cx
     imag ops g: plain cos abs neg absxy       -> y' = g(2xy) + cy
-    power n: 2..7                              -> z^n + c family
+    power n: 2..5                              -> z^n + c family
 """
 
 from __future__ import annotations
@@ -310,8 +312,8 @@ def aprs_record(
         "created": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "renderer": "fractal-darkroom",
         "provenance": provenance,
-        # APRS v1 content id (sha1[:8] of the preview PNG, docs/adr/0001-aprs.md),
-        # mirrored by the playground's sha1hex: a fingerprint, not a security use
+        # APRS v1 preview key: sha1[:8] of this producer's preview PNG, used for
+        # de-duplication (docs/adr/0001-aprs.md); not a security use
         "preview": hashlib.sha1(buf.getvalue(), usedforsecurity=False).hexdigest()[:8],
     }
 
