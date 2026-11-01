@@ -10,7 +10,9 @@
 - **Never weaken a gate to pass it:** no lowered thresholds, no new
   suppressions or allowlist entries, no skipped or deleted tests. Fix the
   code, or fix the gate in QZP (see [CONTRIBUTING.md](CONTRIBUTING.md)).
-- **Tests ship with the change:** 100 % line **and** branch coverage.
+- **Tests ship with the change:** 100 % line **and** branch coverage of
+  the Python modules measured in `.coveragerc` (`usermaps/`, the site
+  harness and the browser JavaScript are not measured).
 - **Never push to `main`:** every change lands through a pull
   request whose required checks are green.
 - **Security findings go private:** follow [SECURITY.md](SECURITY.md).

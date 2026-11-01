@@ -1,5 +1,5 @@
 // Brot Farm playground — everything computed live in your browser.
-// Vanilla JS, no dependencies. Mirrors the Python renderer's semantics
+// Vanilla JS, no dependencies. Approximates the Python renderer
 // (two-phase classification fused per-sample; percentile-anchored log tone map).
 'use strict';
 
@@ -1004,10 +1004,11 @@ const br = () => document.createElement('br');
 })();
 
 /* ==================================================== BUILD SUITE (L3) */
-// Operator grammar shared with brot_build.py — semantics identical on both
-// sides (the Python expressions and these JS expressions are generated from
-// the same table; the parity test enforces name parity, the round-trip docs
-// the behavior parity).
+// Operator names shared with brot_build.py. This table is hand-written, not
+// generated from brot_build's; the parity test checks map names only, and
+// nothing checks this table against brot_build.py. One known difference: the
+// fold family's abs is applied before + cx here (|Re z^n| + cx), while
+// brot_build.py applies it after (|Re z^n + cx|).
 const BUILD = {
   real: {
     cos: (x) => M.cos(x * x),

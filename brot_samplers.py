@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Three estimators of one orbit-density histogram (S0 / S1 / S2).
+"""Three samplers aimed at one orbit-density histogram (S0 / S1 / S2).
 
-Estimand — identical for all three samplers
+Intended estimand — the target of all three samplers
 --------------------------------------------------
 Draw c uniformly from the buddhabrot frame F = [XMIN, XMAX] x [YMIN, YMAX]
 (the module constants of buddhabrot.py). Let orbit(c) be the pre-escape
@@ -15,13 +15,15 @@ within `max_iter`. Define
 
     P[p] = E_c~U(F)[g_p(c)] / sum_p' E_c~U(F)[g_p'(c)].
 
-P is *the* orbit-density histogram estimated here: a probability
+P is the orbit-density histogram the samplers target: a probability
 distribution over pixels. Every sampler below returns a histogram
 normalised to sum 1, an effective sample size (Kish), the number of orbit
 evaluations consumed, and — where the method can see it — the total-mass
 estimate E_U[sum_p g_p]. All samplers are seeded (numpy default_rng,
 deterministic per seed) and hard-capped: `budget` is the maximum number of
 seed-orbit evaluations per call, pre-passes and chain inits included.
+S0 is plain Monte Carlo; S1 and S2 are experimental and have not been
+validated as unbiased estimators of P.
 
 S0 — uniform (wraps existing machinery)
 --------------------------------------------------
@@ -31,35 +33,28 @@ classify with buddhabrot.escape_mask, histogram with buddhabrot.plot_orbits.
 P_hat0[p] = (sum_j g_p(c_j)) / (sum_p' sum_j g_p'(c_j)); weights are all 1,
 so ESS = budget, and total mass is unbiased.
 
-S1 — boundary importance via rejection on escape-time bands
+S1 — boundary-weighted importance via rejection on escape-time bands
 --------------------------------------------------
 Pre-pass (cheap, counted against budget): a G x G lattice of cell centres
 over F; each centre gets its escape time t(cell) at cap `pre_cap`
 (escape_times, chunked like buddhabrot.escape_mask). Weight
 
-    w(cell) = 0            if the centre is inside the main cardioid or
-                            period-2 bulb (provably never escapes ->
-                            contributes exactly 0, so q = 0 there is legal)
-    w(cell) = max(t, 1)    otherwise  (t = pre_cap if it did not escape,
-                            i.e. boundary-adjacent -> heaviest).
+    w(cell) = 0            if the cell's centre is inside the main
+                            cardioid or the period-2 bulb
+    w(cell) = max(t, 1)    otherwise  (t = pre_cap if the centre did not
+                            escape within pre_cap -> heaviest).
 
-Derivation of the weighting: the per-sample total contribution to the
-histogram is sum_p g_p(c) = (number of plotted points) = the escape step
-count itself — plot_orbits plots every pre-escape step. So E[contribution |
-cell] is *exactly* proportional to the cell's expected escape time, and a
-proposal q(c) proportional to the integrand's magnitude is the classic
-zero-variance direction for importance sampling. Sampling: rejection —
-draw uniform, accept with probability w(cell)/w_max. The proposal is
-piecewise constant per cell, and each accepted seed carries importance
-weight
+The weighting is a heuristic.
+
+Sampling: rejection — draw uniform, accept with probability
+w(cell)/w_max. The proposal is piecewise constant per cell, and each
+accepted seed carries importance weight
 
     W(c) = w_bar / w(cell(c)),   w_bar = mean of the pre-pass grid,
 
-so P_hat1[p] ∝ sum_i W(c_i) g_p(c_i). Because the estimator divides by
-exactly the q that generated the samples, the *shape* (normalised
-histogram) is unbiased; only the global total-mass scale carries the
-grid-mean approximation of E_U[w]. Rejection efficiency (mean_w / w_max)
-is reported as `acceptance`.
+so P_hat1[p] ∝ sum_i W(c_i) g_p(c_i). Rejection efficiency
+(mean_w / w_max) is reported as `acceptance`. S1 has not been validated
+as an unbiased estimator of P.
 
 S2 — Metropolis-Hastings seed mutation
 --------------------------------------------------
@@ -90,12 +85,9 @@ Z_r = integral of r, so S2 estimates the *shape* P (self-normalised
 importance sampling); total mass is not identifiable without Z_r and is
 reported as None.
 
-Mixing justification: independent parallel chains from dispersed
-uniform starts collapse onto the target's support from different
-regions; acceptance rate is recorded every call (healthy band roughly
-0.2-0.6 for the default step; sustained ~0 or ~1 would mean the mutation
-scale is wrong), and the Kish ESS of the 1/r weights diagnoses the
-weight degeneracy that SNIS would suffer if the chain over-concentrated.
+S2 has not been validated as an unbiased estimator of P. The acceptance
+rate and the Kish ESS of the 1/r weights are recorded on every call as
+diagnostics.
 
 Usage:
     python brot_samplers.py [--full] [--size N] [--max-iter N]
@@ -535,7 +527,10 @@ def compare(
 
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(
-        description="Three estimators of the same orbit-density histogram."
+        description=(
+            "Three experimental samplers aimed at the same orbit-density "
+            "histogram (see the module docstring)."
+        )
     )
     ap.add_argument("--full", action="store_true", help="full preset (default smoke)")
     ap.add_argument("--size", type=int, default=None)

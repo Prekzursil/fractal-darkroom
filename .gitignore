@@ -4,4 +4,4 @@ __pycache__/
 .pytest_cache/
 *.npy
 .coverage
-paper-deliverables/
+*-deliverables/

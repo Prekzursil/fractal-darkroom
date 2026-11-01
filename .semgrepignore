@@ -98,13 +98,3 @@ build/
 **/build/
 out/
 **/out/
-
-# Archived lab notebook, not first-party source: research/ is a byte-identical
-# copy of an external source of record (the paper project's experiments/src),
-# synced verbatim and never edited here, so a finding could not be fixed in
-# place without breaking that identity. Its gate is the CI `research` job
-# (scripts/check_research.py: results parse, receipts carry the skeleton
-# sentinel, sources compile). ruff.toml, pyrightconfig.json and .coveragerc
-# exclude it for the same reason. gitleaks (gate 5) still scans it.
-research/
-**/research/

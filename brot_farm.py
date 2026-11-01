@@ -446,7 +446,9 @@ def render_fractal(f, force=False):
                     cx = np.full(n, f["julia"][0])
                     cy = np.full(n, f["julia"][1])
                 else:
-                    cx, cy = ax, ay  # parameter-space sampling: orbit starts at z1 = c
+                    # parameter-space sampling: orbits start at z = c, which is the
+                    # orbit of z0 = 0 one step in only when step(0, 0, c) = c
+                    cx, cy = ax, ay
                 if f["cull"]:
                     keep = ~inside_main_sets(cx, cy)
                     ax, ay, cx, cy = ax[keep], ay[keep], cx[keep], cy[keep]

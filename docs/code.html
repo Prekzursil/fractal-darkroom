@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html data-build="e5ddea6e" lang="en">
+<html data-build="cb8c2659" lang="en">
 <head>
 <script>
 /* error banner: works even if every other asset fails; shown only on error */
@@ -27,7 +27,7 @@
 <main>
 <div class="kicker reveal">Chapter 2</div>
 <h1 class="reveal">How it’s built — every choice and its rejected twin</h1>
-<p class="reveal">Four Python files, ~600 lines, two dependencies (numpy, Pillow), no GPU, no
+<p class="reveal">A handful of Python files, two runtime dependencies (numpy, Pillow), no GPU, no
 compile step. The interesting parts are not the lines — they’re the forks in the road.</p>
 
 <h2 class="reveal">The architecture in one picture</h2>
@@ -79,14 +79,14 @@ compile step. The interesting parts are not the lines — they’re the forks in
   <div class="card">
     <h3>Chosen: classify, then replay</h3>
     <p>Run the batch once to learn who escapes; then re-run <em>only escapees</em>, plotting as you go.
-    Costs ~1.7× the arithmetic of a single pass.</p>
+    Costs extra arithmetic: every escaping orbit is iterated twice.</p>
     <p><b>Why:</b> it keeps every inner operation a whole-array numpy expression. Vectorization
     demands uniform control flow — you cannot have per-point “start recording now” branches
     without falling out of SIMD-friendly array ops.</p>
   </div>
   <div class="card">
     <h3>Rejected: single pass with orbit buffers</h3>
-    <p>Record every orbit into per-sample arrays while iterating, then scatter once. Looks 40%
+    <p>Record every orbit into per-sample arrays while iterating, then scatter once. Looks
     cheaper on paper; in practice the recording gathers into Python-level lists or object arrays,
     memory balloons to GB, and the scatter dominates. There <em>is</em> a middle path — fixed
     per-sample ring buffers of 64 slots in a (N, 64) array — viable, but the code triples in
@@ -96,12 +96,14 @@ compile step. The interesting parts are not the lines — they’re the forks in
 
 <h2 class="reveal">Choice 2 — <code>bincount</code> instead of <code>np.add.at</code></h2>
 <p class="reveal">Turning point-coordinates into histogram hits is a <b>scatter-add</b>.
-The obvious tool, <code>histogram += 1; np.add.at(hist, idx, 1)</code>, is notoriously slow —
-it’s a per-element ufunc with no vectorized fast path. <code>np.bincount(flat_indices,
-minlength=W*H)</code> does the same job at memory bandwidth. The cost is allocating a fresh
-4M-entry array per call, so the plotter buffers indices and flushes at 24M points per
-<code>bincount</code> — amortizing the allocation to noise. Measured on this project’s
-workloads: bincount flushed in batches beat <code>add.at</code> by roughly an order of magnitude.</p>
+The obvious tool is <code>np.add.at(hist, idx, 1)</code>, which was notoriously slow before
+NumPy 1.25 added a fast path for <code>ufunc.at</code> when the operands are aligned and need no
+casting (<a href="https://numpy.org/doc/stable/release/1.25.0-notes.html">NumPy 1.25.0 release
+notes</a>). The renderer uses <code>np.bincount(flat_indices, minlength=W*H)</code> instead: one
+vectorized call that does not rely on that fast path, so the choice does not depend on the
+NumPy version. The cost is allocating a fresh 4M-entry array per call, so
+the plotter buffers indices and flushes at 24M points per <code>bincount</code>, amortizing
+the allocation.</p>
 
 <h2 class="reveal">Choice 3 — compaction cadence</h2>
 <p class="reveal">Points escape at wildly different times; after 30 steps a 3M-sample batch is
@@ -111,23 +113,22 @@ masking overhead (a full copy of six arrays) dominates; too large and you keep i
 k = 32 for quadratics, k = 8 for the transcendental mutations (they can overflow float64 in a
 handful of steps past their escape radii — which brings us to the bug).</p>
 
-<h2 id="the-bug" class="reveal">The bug the tests caught</h2>
+<h2 id="the-bug" class="reveal">The bug the renders exposed</h2>
 <div class="card reveal" style="border-color:rgba(217,106,106,.5)">
   <p><b>Symptom:</b> quadratic-family renders (powers, ship, tricorn, celtic, buffalo, julia)
-  came out sparse — 9–30% visible structure against the classic’s 62% — and ate mysterious
-  amounts of phase-1 time.</p>
+  came out visibly sparse and ate mysterious amounts of phase-1 time.</p>
   <p><b>Cause:</b> a diverging point grows geometrically: past radius 2 a quadratic orbit takes
   ~11 more steps to overflow float64 into <b>inf</b>, and one step later
   <code>inf − inf</code> yields <b>NaN</b>. NaN fails every comparison —
   <code>nan &gt; 4</code> is False — so from that moment the escape test can never fire again:
   the point is <em>misclassified as a prisoner forever</em>, and it keeps riding along in the
-  arrays burning cycles until the iteration cap. With compaction every 32 steps, roughly
-  <b>two-thirds of all escaping orbits were silently dropped</b> from those maps.</p>
-  <p><b>Fix:</b> one guard — <code>(r &gt; 4)0 | ~np.isfinite(r)</code> — treat NaN as escaped.
+  arrays burning cycles until the iteration cap. With compaction every 32 steps, <b>a large
+  share of the escaping orbits was silently dropped</b> from those maps (how large depends on
+  the check interval and the iteration cap).</p>
+  <p><b>Fix:</b> one guard — <code>(r &gt; 4) | ~np.isfinite(r)</code> — treat NaN as escaped.
   The original single-map renderer had it; the generalized farm rewrite dropped it. The
   regression test now compares the vectorized classifier against a per-step scalar reference
-  on five maps. Corrective top-ups (~200M fresh samples under the fixed classifier) restored
-  every affected histogram.</p>
+  on five maps.</p>
   <p style="color:var(--muted)"><b>Moral:</b> NaN is not a crash; it is a very quiet wrong
   answer. Floating-point escape tests need explicit infinite/NaN handling, and reference-test
   your fast path against a dumb one.</p>
@@ -136,66 +137,67 @@ handful of steps past their escape radii — which brings us to the bug).</p>
 <h2 class="reveal">Choice 4 — analytic culling of the interior</h2>
 <p class="reveal">Points inside the main cardioid or the period-2 bulb can <em>never</em> escape
 (a conjugacy argument pins their orbits to bounded disks), and both regions have closed-form
-membership tests. Culling them before iteration removes ~13% of samples from the Mandelbrot-family
-runs for free — sound because culled points contributed nothing to an escape-only histogram
-anyway. (The Antibuddhabrot must <b>not</b> cull: prisoners are its entire subject.)</p>
+membership tests. Culling them before iteration removes about 11.9% of the uniform draws in the
+classic and Nebulabrot window (the two regions have area 3π/8 + π/16 = 7π/16 ≈ 1.374, out of
+3.4 × 3.4), and it is sound because culled points contributed nothing to an escape-only
+histogram anyway. (The Antibuddhabrot must <b>not</b> cull: prisoners are its entire subject.)</p>
 
 <h2 class="reveal">Choice 5 — float64 and honest precision</h2>
 <p class="reveal">float32 would double throughput on paper. Rejected: squaring amplifies
 rounding, deep orbits would visibly kink, and — decisive — the overflow-to-NaN hazard arrives
 sooner. The <code>cos(x²)</code> mutations already oscillate punishingly at |x| &gt; 10; halving
-mantissa there produces visibly different pictures. For the same reason the escape radii for
-transcendental maps were set generously (|y|, |x|, or |z| at 100–1000) so the classifier
-divergence proofs still hold in floating point.</p>
+mantissa there produces visibly different pictures. The escape radii for transcendental maps
+(|y|, |x|, or |z| at 100–1000) are heuristic bailouts, except the y-cosine map’s |x| &gt; 100
+test, which is a proven bound (see the <a href="math.html">math chapter</a>); orbits that
+overflow between checks are caught by the NaN guard.</p>
 
-<h2 class="reveal">Measured cost model</h2>
-<p class="reveal">All numbers from this project’s runs (single process unless noted, laptop-class
-CPU, numpy 2.x):</p>
+<h2 class="reveal">Sample budgets and cost</h2>
+<p class="reveal">Sample counts as configured in <code>buddhabrot.py</code>, <code>cosbrot.py</code>
+and <code>brot_farm.py</code> (<code>python brot_farm.py --list</code> prints the farm’s caps and
+samples per channel):</p>
 <table class="reveal">
-  <tr><th>Job</th><th>Samples</th><th>Time</th><th>Note</th></tr>
-  <tr><td>Classic Buddhabrot, 2048², caps 80/400/1500</td><td class="mono">74M</td><td class="mono">3 m 05 s</td><td>~24M orbits/min</td></tr>
-  <tr><td>Cos-mutation, caps 60/300/1000</td><td class="mono">38M</td><td class="mono">2 m 37 s</td><td>cos() roughly 3–5× a multiply</td></tr>
-  <tr><td>Nebulabrot red channel alone, cap 5000</td><td class="mono">5M</td><td class="mono">34 min*</td><td>*under 4-way contention; ~14 min alone. Deep caps are superlinear: survivors iterate the full budget</td></tr>
-  <tr><td>4 parallel shards (17 maps)</td><td class="mono">~600M</td><td class="mono">~50 min wall</td><td>processes contend for memory bandwidth; per-process throughput drops ~2.5×</td></tr>
+  <tr><th>Job</th><th>Samples</th><th>Note</th></tr>
+  <tr><td>Classic Buddhabrot, 2048², caps 80/400/1500</td><td class="mono">74M</td><td>36M + 24M + 14M over the three channels</td></tr>
+  <tr><td>Cos-mutation, caps 60/300/1000</td><td class="mono">38M</td><td>18M + 12M + 8M over the three channels</td></tr>
+  <tr><td>Nebulabrot red channel alone, cap 5000</td><td class="mono">5M</td><td>deep caps cost more per sample: orbits that never escape are iterated to the full cap</td></tr>
+  <tr><td>The 17 stock farm maps, 4 parallel shards</td><td class="mono">502M</td><td>11M (Antibuddhabrot) to 46M (Exp mutation) per map; maps in <code>usermaps/</code> add their own budgets</td></tr>
 </table>
-<p class="reveal">Back-of-envelope: the classic render moves ~4.4 billion plotted points at
-~10 flops each ≈ 45 GFLOP, done in 185 s ≈ <b>0.25 GFLOP/s effective</b> — one to two orders
-below the CPU’s arithmetic peak. The gap is the scatter: <code>bincount</code> and the compaction
-copies are memory-bound random traffic, not arithmetic. That gap is exactly what a GPU
-would close.</p>
+<p class="reveal">The <code>bincount</code> scatter and the compaction copies are memory-bound
+random traffic rather than arithmetic, which is the kind of work a GPU handles well.</p>
 
-<h2 class="reveal">Alternative architectures, honestly scored</h2>
+<h2 class="reveal">Alternative architectures</h2>
 <table class="reveal">
-  <tr><th>Architecture</th><th>Est. speedup</th><th>Why not (or when)</th></tr>
-  <tr><td><b>C + OpenMP</b>, same two-phase design</td><td class="mono">5–15×</td>
+  <tr><th>Architecture</th><th>Why not (or when)</th></tr>
+  <tr><td><b>C + OpenMP</b>, same two-phase design</td>
       <td>Nothing wrong with it — it’s just a weekend of memory-management for a result numpy already produces in minutes. The natural next step if renders move to 8K.</td></tr>
-  <tr><td><b>CUDA / OpenCL</b>, atomic adds into VRAM histogram</td><td class="mono">50–200×</td>
+  <tr><td><b>CUDA / OpenCL</b>, atomic adds into VRAM histogram</td>
       <td>The real endgame: scatter-add is what GPUs are for. Cost: a CUDA toolchain, and the two-phase trick becomes optional (thread-per-sample with early-exit is fine on GPU).</td></tr>
-  <tr><td><b>WebGL/WebGPU in-browser</b></td><td class="mono">10–60×</td>
-      <td>Chosen for the <a href="playground.html">playground’s mini-renderer</a> in spirit (canvas, JS): instant sharing, zero install. JS gives ~1–3M points/s — enough to watch the photograph develop live.</td></tr>
-  <tr><td><b>Single-pass orbit buffering</b></td><td class="mono">0.6–1×</td><td>Complexity for break-even; rejected (Choice 1).</td></tr>
-  <tr><td><b>float32 everywhere</b></td><td class="mono">~1.5×</td><td>Visible artifacts on deep orbits; rejected (Choice 5).</td></tr>
-  <tr><td><b>Multiprocessing inside one job</b></td><td class="mono">~2.5–3×</td>
-      <td>Used in practice as four sharded CLI processes. Diminishing returns past core-count÷2 — bandwidth-bound.</td></tr>
+  <tr><td><b>WebGL/WebGPU in-browser</b></td>
+      <td>Chosen for the <a href="playground.html">playground’s mini-renderer</a> in spirit (canvas, JS): instant sharing, zero install. Plain JS is fast enough to watch the photograph develop live.</td></tr>
+  <tr><td><b>Single-pass orbit buffering</b></td><td>Complexity for break-even; rejected (Choice 1).</td></tr>
+  <tr><td><b>float32 everywhere</b></td><td>Visible artifacts on deep orbits; rejected (Choice 5).</td></tr>
+  <tr><td><b>Multiprocessing inside one job</b></td>
+      <td>Used in practice as four sharded CLI processes.</td></tr>
 </table>
 
-<h2 class="reveal">Quality control without eyes</h2>
-<p class="reveal">Renders were judged by numbers before anyone saw pixels: <b>mean luminance</b>
-(0.05–0.2 is the balanced band), <b>visible fraction</b> (structure coverage), <b>mirror-symmetry
-correlation</b> (checked against each formula’s equivariance prediction), <b>center of mass</b>
-(a lopsided CoM on a symmetric map means a bug, on an asymmetric map means the mutation worked),
-and <b>region brightness probes</b> (body/head/antenna/corner). Every out-of-band image was
-re-toned from its cached histogram — the render never re-ran. That loop —
-<i>measure, re-tone, measure</i> — is the quiet hero of the whole project.</p>
+<h2 class="reveal">Quality control by numbers</h2>
+<p class="reveal"><code>python brot_farm.py qc</code> prints four statistics (the center of mass
+as x and y) for every finished farm render: <b>mean luminance</b>, <b>visible fraction</b>
+(the share of pixels brighter than 0.05), a <b>top/bottom correlation</b> about the image
+midline, and the <b>center of mass</b>. The
+correlation is a mirror test only when the plot window is centred on the real axis (it is not
+for the tan and sinh mutations). A lopsided center of mass on a symmetric map points to a bug;
+on an asymmetric map it means the mutation worked. Because histograms are cached, an image whose
+numbers look off can be re-toned without re-running the sampling — <i>measure, re-tone,
+measure</i>.</p>
 
 <h2 class="reveal">What would make it better</h2>
 <div class="grid2 reveal">
-  <div class="card"><h3>Smarter sampling</h3><p>Uniform sampling wastes shots on uninteresting
-  countryside. Boundary-weighted importance sampling, or <b>Metropolis-Hastings mutation of
-  seeds</b> (the classic technique for Buddhabrot: propose new c near old c, keep proposals whose
-  orbits hit the frame), concentrates samples exactly where the picture is — typically 10–50×
-  effective sample efficiency.</p></div>
-  <div class="card"><h3>GPU backend</h3><p>A ~100-line CUDA kernel (one block per sample batch,
+  <div class="card"><h3>Smarter sampling</h3><p>Uniform sampling is simple and unbiased, but in
+  a zoomed view most shots land on orbits that never cross the frame. Boundary-weighted
+  importance sampling and <b>Metropolis-style seed mutation</b> are known options for zoomed
+  views (<code>brot_samplers.py</code> has experimental versions of both).</p></div>
+  <div class="card"><h3>GPU backend</h3><p>A CUDA kernel (one block per sample batch,
   atomicAdd into a texture) would turn “minutes” into “seconds”, unlock 8K and animation. The
   two-phase structure dissolves: classify and plot in the same pass.</p></div>
   <div class="card"><h3>Animation pipeline</h3><p>The cached-histogram design already supports

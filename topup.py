@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """Top-up sparse brot histograms: crop canvas to the figure + add samples.
 
+The new samples are drawn from the cropped window, which also replaces the
+map's sampling window, so a topped-up histogram mixes two sampling
+distributions (the original render's and the crop's). It is a different
+estimate from a fresh render, not the same one with more samples.
+
 Usage: python topup.py NAME CROP_PX EXTRA_BLUE EXTRA_GREEN EXTRA_RED
 """
 

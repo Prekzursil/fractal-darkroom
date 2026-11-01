@@ -18,18 +18,14 @@
 
 - [ ] **`python -m pytest --cov` at 100 % line AND branch** for every new/changed
       Python line — tests added in the same change; `# pragma: no cover` only
-      on `__main__` guards
+      on `__main__` guards. The gate measures the modules listed under
+      `source` in `.coveragerc`; `usermaps/`, `scripts/verify_site.py` and the
+      browser JavaScript are not measured
 
 ### Site suite (anything under `docs/`)
 
 - [ ] **`python scripts/verify_site.py --browsers chromium --origin http`** green,
       and a probe added to it for any new interactive UI
-
-### Research lab notebook (anything under `research/`)
-
-- [ ] **`python scripts/check_research.py`** passes (also run by preflight): results
-      parse and are non-empty, receipts carry the skeleton sentinel in their first
-      5 lines, sources byte-compile
 
 ### Asset versioning (anything under `docs/assets/`)
 

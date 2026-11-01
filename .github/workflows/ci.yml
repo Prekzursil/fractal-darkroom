@@ -65,23 +65,12 @@ jobs:
           python brot_farm.py --list
           test -f out/buddhabrot_smoke.png && echo "smoke render OK"
 
-  research:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Research lab-notebook gate (JSON valid, sentinels present, sources compile)
-        run: python scripts/check_research.py
-
   ci-green:
     # aggregate gate for branch protection: one stable context name that
     # requires every matrix cell above to have passed. Fail-closed: without
     # `if: always()` a failed or cancelled job above leaves ci-green *skipped*,
     # and a skipped required check counts as passing.
-    needs: [site, test, research]
+    needs: [site, test]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
