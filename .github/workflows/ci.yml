@@ -39,8 +39,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # 3.11 dropped with the numpy>=2.5.4 floor: numpy 2.5.x declares
+        # Requires-Python >=3.12, so `pip install -r requirements.txt` cannot
+        # resolve on 3.11 (observed: "No matching distribution found for
+        # numpy>=2.5.4"). One hard security floor beats a two-tier one.
         os: [ubuntu-latest, windows-latest]
-        python-version: ["3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
