@@ -105,7 +105,6 @@ from typing import Any
 import numpy as np
 
 import buddhabrot as bb
-from buddhabrot import XMAX, XMIN, YMAX, YMIN
 
 SMOKE: dict[str, int | float] = {
     "size": 256,
@@ -193,8 +192,8 @@ def trace_orbits(
     n = cr.size
     times = np.full(n, max_iter, dtype=np.int64)
     escaped = np.zeros(n, dtype=bool)
-    sx = W / (XMAX - XMIN)
-    sy = H / (YMAX - YMIN)
+    sx = W / (bb.XMAX - bb.XMIN)
+    sy = H / (bb.YMAX - bb.YMIN)
     idx = np.arange(n)
     zr, zi = cr.copy(), ci.copy()
     cr_w, ci_w = cr, ci
@@ -202,8 +201,8 @@ def trace_orbits(
     cell_parts: list[np.ndarray] = []
     it = 0
     while zr.size and it < max_iter:
-        px = ((zr - XMIN) * sx).astype(np.int64)
-        py = ((zi - YMIN) * sy).astype(np.int64)
+        px = ((zr - bb.XMIN) * sx).astype(np.int64)
+        py = ((zi - bb.YMIN) * sy).astype(np.int64)
         inb = (px >= 0) & (px < W) & (py >= 0) & (py < H)
         if inb.any():
             owner_parts.append(idx[inb])
@@ -251,8 +250,8 @@ def sample_uniform(
     with np.errstate(over="ignore", invalid="ignore"):
         while n_drawn < budget:
             n = min(batch, budget - n_drawn)
-            cr = rng.uniform(XMIN, XMAX, n)
-            ci = rng.uniform(YMIN, YMAX, n)
+            cr = rng.uniform(bb.XMIN, bb.XMAX, n)
+            ci = rng.uniform(bb.YMIN, bb.YMAX, n)
             keep = ~bb.inside_main_sets(cr, ci)
             n_culled += int(n - keep.sum())
             cr, ci = cr[keep], ci[keep]
@@ -291,10 +290,10 @@ def sample_boundary_importance(
     t0 = time.time()
     prepass_evals = grid * grid
     # cheap pre-pass: G x G lattice of cell centres, escape time per centre
-    dx = (XMAX - XMIN) / grid
-    dy = (YMAX - YMIN) / grid
-    gx = XMIN + (np.arange(grid) + 0.5) * dx
-    gy = YMIN + (np.arange(grid) + 0.5) * dy
+    dx = (bb.XMAX - bb.XMIN) / grid
+    dy = (bb.YMAX - bb.YMIN) / grid
+    gx = bb.XMIN + (np.arange(grid) + 0.5) * dx
+    gy = bb.YMIN + (np.arange(grid) + 0.5) * dy
     cx, cy = np.meshgrid(gx, gy)
     with np.errstate(over="ignore", invalid="ignore"):
         t_pre = escape_times(cx.ravel(), cy.ravel(), pre_cap)
@@ -311,10 +310,10 @@ def sample_boundary_importance(
     budget_main = max(0, budget - prepass_evals)
     while draws < budget_main:
         n = min(batch, budget_main - draws)
-        cr = rng.uniform(XMIN, XMAX, n)
-        ci = rng.uniform(YMIN, YMAX, n)
-        ix = np.clip(((cr - XMIN) / dx).astype(np.int64), 0, grid - 1)
-        iy = np.clip(((ci - YMIN) / dy).astype(np.int64), 0, grid - 1)
+        cr = rng.uniform(bb.XMIN, bb.XMAX, n)
+        ci = rng.uniform(bb.YMIN, bb.YMAX, n)
+        ix = np.clip(((cr - bb.XMIN) / dx).astype(np.int64), 0, grid - 1)
+        iy = np.clip(((ci - bb.YMIN) / dy).astype(np.int64), 0, grid - 1)
         w = cell_w[iy, ix]
         u = rng.random(n)
         acc = u * w_max < w  # accept with probability w / w_max
@@ -403,8 +402,8 @@ def sample_mh_mutation(
                 budget - evals,
                 max(64, 8 * (chains - len(cur_r_l))),
             )
-            cr = rng.uniform(XMIN, XMAX, n)
-            ci = rng.uniform(YMIN, YMAX, n)
+            cr = rng.uniform(bb.XMIN, bb.XMAX, n)
+            ci = rng.uniform(bb.YMIN, bb.YMAX, n)
             times, cells = trace_orbits(cr, ci, max_iter, W, H)
             hits = np.fromiter((c.size for c in cells), dtype=np.int64, count=n)
             r = hits * bump(times.astype(np.float64))
@@ -433,10 +432,10 @@ def sample_mh_mutation(
                 prop_cr = cur_cr + rng.normal(0.0, step, k_chains)
                 prop_ci = cur_ci + rng.normal(0.0, step, k_chains)
                 inb = (
-                    (prop_cr >= XMIN)
-                    & (prop_cr <= XMAX)
-                    & (prop_ci >= YMIN)
-                    & (prop_ci <= YMAX)
+                    (prop_cr >= bb.XMIN)
+                    & (prop_cr <= bb.XMAX)
+                    & (prop_ci >= bb.YMIN)
+                    & (prop_ci <= bb.YMAX)
                 )
                 r_prop = np.zeros(k_chains)
                 # placeholders are replaced for every in-frame proposal;
