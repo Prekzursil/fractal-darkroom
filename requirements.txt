@@ -4,7 +4,7 @@ pillow>=13.0.0
 # gate installs this file before basedpyright, so without playwright listed
 # here the `playwright.sync_api` import is unresolvable and trips the
 # zero-warning bar of the lean gate's types step
-playwright>=1.60.0
+playwright>=1.64.1
 pytest>=9.1.1
 pytest-cov>=7.1.0
 # security floor for a transitive dependency (pytest -> pygments): ReDoS
