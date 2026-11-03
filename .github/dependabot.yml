@@ -13,10 +13,6 @@ updates:
       update-types:
       - patch
       - minor
-  ignore:
-  - dependency-name: '*'
-    update-types:
-    - version-update:semver-major
   labels:
   - dependencies
   - type:chore
@@ -33,10 +29,6 @@ updates:
       update-types:
       - patch
       - minor
-  ignore:
-  - dependency-name: '*'
-    update-types:
-    - version-update:semver-major
   labels:
   - dependencies
   - type:chore
