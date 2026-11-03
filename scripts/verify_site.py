@@ -84,14 +84,7 @@ def check_page(pg, base: str, page_name: str, mobile: bool) -> None:
         ),
     )
 
-    pg.goto(
-        f"{base}/{page_name}"
-        if not base.startswith("file")
-        else f"{base}/{page_name}".replace("file:///", "file:///")
-        if False
-        else f"{base}/{page_name}",
-        wait_until="load",
-    )
+    pg.goto(f"{base}/{page_name}", wait_until="load")
     pg.wait_for_timeout(1100)
 
     # asset versioning lint: every local asset reference carries ?v=
