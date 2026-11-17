@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Asset versioning drift tripwire
         run: python scripts/version_assets.py --check
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
         with:
           # self-enable Pages so a first push to a fresh clone can never race
           # the API-based enablement (the original red CI run)
