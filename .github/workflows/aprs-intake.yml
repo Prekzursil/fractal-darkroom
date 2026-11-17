@@ -36,7 +36,7 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       ISSUE: ${{ github.event.issue.number }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Find the .aprs.json attachment
         id: find
